@@ -10,9 +10,10 @@ import os
 # New Bot Token
 BOT_TOKEN = '8481818955:AAFRdwHiHDB9OnEQ4Sjo7SoMcg60bBvBuhc' 
 CHANNEL_USERNAME = '@Testing55551' 
-ADMIN_USERNAME = '@Fasttaget , @Winslotz' 
-# New Admin IDs
-ADMIN_IDS = [8174647079, 7762779824, 7565458414] 
+ADMIN_USERNAME_PRIMARY = '@Fasttaget'  # Old Admin
+ADMIN_USERNAME_SECONDARY = '@Winslotz' # New Admin
+# Updated Admin IDs list (7762779824, 7565458414, and the new one 8174647079)
+ADMIN_IDS = [7762779824, 7565458414, 8174647079] 
 REFERRER_REWARD = 15.00 
 REFERRED_BONUS = 5.00   
 # Updated DB Name
@@ -46,27 +47,7 @@ GAME_URLS = {
 }
 
 # ----------------------------------------------------
-# --- 3. Host Fix (Temporary Solution) ---
-# --- You must include this if your host doesn't support requirements.txt ---
-# ----------------------------------------------------
-
-import subprocess
-import sys
-    
-try:
-    import telebot
-except ImportError:
-    print("telebot not found. Attempting to install...")
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyTelegramBotAPI"])
-        import telebot
-    except Exception as e:
-        print(f"Failed to install telebot: {e}. Bot cannot run.")
-        # If hosting environment doesn't allow pip install, the bot will fail later.
-        pass 
-
-# ----------------------------------------------------
-# --- 4. Database Functions (Unchanged Logic) ---
+# --- 3. Database Functions (Unchanged Logic) ---
 # ----------------------------------------------------
 
 def init_db():
@@ -239,7 +220,7 @@ def update_payment_status(payment_id, status, user_id):
     conn.close()
 
 # ----------------------------------------------------
-# --- 5. Keyboard Markup Functions ---
+# --- 4. Keyboard Markup Functions (Unchanged) ---
 # ----------------------------------------------------
 
 def main_menu_markup():
@@ -287,7 +268,7 @@ def admin_panel_markup():
     return markup
 
 # ----------------------------------------------------
-# --- 6. Core Utility Functions (Updated Text) ---
+# --- 5. Core Utility Functions (Updated Text) ---
 # ----------------------------------------------------
 
 def send_main_menu(chat_id, text="🚀 **Main Menu** - Choose an option:", reply_markup=None):
@@ -304,7 +285,7 @@ def send_welcome_message(message):
     send_main_menu(message.chat.id, text)
 
 # ----------------------------------------------------
-# --- 7. User Handlers (Logic remains the same as last update) ---
+# --- 6. User Handlers (Updated Admin Usernames) ---
 # ----------------------------------------------------
 
 @bot.message_handler(commands=['start'])
@@ -368,7 +349,8 @@ def handle_refer(message):
     
     markup = types.InlineKeyboardMarkup()
     markup.add(
-        types.InlineKeyboardButton(text="💬 Contact Admin for Withdrawal", url=f"https://t.me/{ADMIN_USERNAME.replace('@', '')}")
+        types.InlineKeyboardButton(text="💬 Contact Admin for Withdrawal (@Fasttaget)", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
+        types.InlineKeyboardButton(text="💬 Contact Admin for Withdrawal (@Winslotz)", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
     )
     markup.add(types.InlineKeyboardButton(text="🔙 Main Menu", callback_data="back_send")) 
     
@@ -382,12 +364,13 @@ def handle_add_funds(message):
         "To **DEPOSIT** funds, you **must contact the Admin** directly.\n"
         "**Available Deposit Methods:** **Chime, Crypto, and USDT.**\n\n"
         "👇 **Contact the Admin:**\n"
-        f"👑 **Admin Username:** **{ADMIN_USERNAME}**"
+        f"👑 **Admin Usernames:** **{ADMIN_USERNAME_PRIMARY}** OR **{ADMIN_USERNAME_SECONDARY}**"
     )
     
     markup = types.InlineKeyboardMarkup()
     markup.add(
-        types.InlineKeyboardButton(text="💬 Contact Admin for Deposit", url=f"https://t.me/{ADMIN_USERNAME.replace('@', '')}")
+        types.InlineKeyboardButton(text="💬 Contact Admin for Deposit (@Fasttaget)", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
+        types.InlineKeyboardButton(text="💬 Contact Admin for Deposit (@Winslotz)", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
     )
     markup.add(types.InlineKeyboardButton(text="🔙 Main Menu", callback_data="back_send")) 
     
@@ -431,7 +414,8 @@ def handle_mystats(message):
         "🔥 **Your Top 5 Games:**\n"
         f"{game_list}\n\n"
         "**Action Required:**\n"
-        f"To **deposit or withdraw**, contact Admin: **{ADMIN_USERNAME}**\n"
+        f"To **deposit or withdraw**, contact Admin:\n"
+        f"**{ADMIN_USERNAME_PRIMARY}** OR **{ADMIN_USERNAME_SECONDARY}**\n"
         "**Available Methods:** **Chime, Crypto, and USDT.**"
     )
     bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=back_to_main_markup_edit())
@@ -464,7 +448,8 @@ def handle_help(message):
         "3. **💳 Add Funds** (`/addfunds`): *Contact the Admin* for instant fund deposit.\n"
         "4. **📊 My Stats** (`/mystats`): View your deposits, referrals, and top games.\n"
         "5. **🔔 Join Our Channel**: See the latest updates and news.\n"
-        f"6. **Admin Support:** For issues, queries, or **Deposit/Withdrawal**, contact our Admin: **{ADMIN_USERNAME}**.\n\n"
+        f"6. **Admin Support:** For issues, queries, or **Deposit/Withdrawal**, contact our Admin(s):\n"
+        f"**{ADMIN_USERNAME_PRIMARY}** OR **{ADMIN_USERNAME_SECONDARY}**.\n\n"
         "**Payment Methods:** **Chime, Crypto, and USDT.**\n\n"
         "Thank you for being a **Winslotzz Premium** member! 👑"
     )
@@ -546,7 +531,7 @@ def handle_back_buttons(call):
             bot.send_message(chat_id, text, parse_mode='Markdown', reply_markup=games_markup())
 
 # ----------------------------------------------------
-# --- 8. Admin Handlers (Unchanged Logic) ---
+# --- 7. Admin Handlers (Unchanged Logic) ---
 # ----------------------------------------------------
 
 @bot.message_handler(commands=['admin'])
@@ -741,7 +726,7 @@ def handle_admin_user_details(message):
     bot.send_message(message.chat.id, user_text, parse_mode='Markdown', reply_markup=markup)
 
 # ----------------------------------------------------
-# --- 9. Main Execution ---
+# --- 8. Main Execution ---
 # ----------------------------------------------------
 
 if __name__ == '__main__':
@@ -749,6 +734,8 @@ if __name__ == '__main__':
     init_db()
     print("Database Initialized. Starting Bot Polling...")
     try:
+        # Note: This polling method works if you've manually installed pyTelegramBotAPI
+        # or are using a compatible hosting service (like PythonAnywhere Bash Console)
         bot.delete_webhook() 
         bot.polling(none_stop=True)
     except Exception as e:
