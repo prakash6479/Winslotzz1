@@ -1,1 +1,1 @@
-web: gunicorn Winslotzz:app
+web: gunicorn bot:app
