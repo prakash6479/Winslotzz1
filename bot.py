@@ -5,23 +5,57 @@ import datetime
 import random
 import string
 import os
+from flask import Flask, request # NEW: For Webhook/Render Hosting
 
 # --- 1. Configuration (UPDATED) ---
-# New Bot Token
 BOT_TOKEN = '8481818955:AAFRdwHiHDB9OnEQ4Sjo7SoMcg60bBvBuhc' 
 CHANNEL_USERNAME = '@Testing55551' 
-ADMIN_USERNAME_PRIMARY = '@Fasttaget'  # Old Admin
-ADMIN_USERNAME_SECONDARY = '@Winslotz' # New Admin
-# Updated Admin IDs list (7762779824, 7565458414, and the new one 8174647079)
+ADMIN_USERNAME_PRIMARY = '@Fasttaget'
+ADMIN_USERNAME_SECONDARY = '@Winslotz' 
+# Updated Admin IDs list
 ADMIN_IDS = [7762779824, 7565458414, 8174647079] 
 REFERRER_REWARD = 15.00 
 REFERRED_BONUS = 5.00   
-# Updated DB Name
 DB_NAME = 'winslotzz_bot.db' 
+
+# RENDER Configuration (Your URL)
+WEBHOOK_URL = "https://winslotzz1.onrender.com"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# --- 2. Game Data (Unchanged) ---
+# ----------------------------------------------------
+# --- 2. Flask and Webhook Setup (MANDATORY FOR RENDER) ---
+# ----------------------------------------------------
+# Flask app must be named 'app' for Gunicorn/Render to work
+app = Flask(__name__) 
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        if request.headers.get('content-type') == 'application/json':
+            json_string = request.get_data().decode('utf-8')
+            update = telebot.types.Update.de_json(json_string)
+            bot.process_new_updates([update])
+            return 'OK', 200
+        else:
+            return 'Content-Type Error', 403
+    
+    # Simple message to confirm the bot is running
+    return 'Winslotzz Bot is Running (Webhook Active)', 200
+
+def set_webhook_url():
+    """Sets the webhook URL on Telegram, essential for Render/Heroku."""
+    try:
+        # Clear any old webhooks
+        bot.remove_webhook()
+        # Set the new webhook URL
+        bot.set_webhook(url=WEBHOOK_URL)
+        print(f"Webhook set to: {WEBHOOK_URL}")
+    except Exception as e:
+        print(f"Error setting webhook: {e}")
+
+
+# --- 3. Game Data (Unchanged) ---
 GAME_URLS = {
     "🔥 FireKirin": "https://start.firekirin.xyz:8580/index.html",
     "✨ MilkyWay": "http://milkywayapp.xyz:8580/index.html",
@@ -47,7 +81,7 @@ GAME_URLS = {
 }
 
 # ----------------------------------------------------
-# --- 3. Database Functions (Unchanged Logic) ---
+# --- 4. Database Functions (Unchanged Logic) ---
 # ----------------------------------------------------
 
 def init_db():
@@ -220,7 +254,7 @@ def update_payment_status(payment_id, status, user_id):
     conn.close()
 
 # ----------------------------------------------------
-# --- 4. Keyboard Markup Functions (Unchanged) ---
+# --- 5. Keyboard Markup Functions (Unchanged) ---
 # ----------------------------------------------------
 
 def main_menu_markup():
@@ -268,7 +302,7 @@ def admin_panel_markup():
     return markup
 
 # ----------------------------------------------------
-# --- 5. Core Utility Functions (Updated Text) ---
+# --- 6. Core Utility Functions (Updated Text) ---
 # ----------------------------------------------------
 
 def send_main_menu(chat_id, text="🚀 **Main Menu** - Choose an option:", reply_markup=None):
@@ -285,7 +319,7 @@ def send_welcome_message(message):
     send_main_menu(message.chat.id, text)
 
 # ----------------------------------------------------
-# --- 6. User Handlers (Updated Admin Usernames) ---
+# --- 7. User Handlers (Permanent Link Fix Verified) ---
 # ----------------------------------------------------
 
 @bot.message_handler(commands=['start'])
@@ -298,6 +332,7 @@ def handle_start(message):
         ref_code = message.text.split()[1]
         conn = get_db_connection()
         c = conn.cursor()
+        # Ensure the referrer is a valid user
         c.execute('SELECT user_id FROM users WHERE referral_code = ?', (ref_code,))
         referrer_data = c.fetchone()
         conn.close()
@@ -329,8 +364,11 @@ def handle_refer(message):
         bot.send_message(message.chat.id, "Error: User data not found. Please try /start.")
         return
 
+    # User's permanent referral code is fetched from the database (user[4])
     referral_code = user[4]
-    bot_username = bot.get_me().username
+    bot_username = bot.get_me().username # The link requires the Bot's username
+    
+    # PERMANENT LINK GENERATION
     referral_link = f"https://t.me/{bot_username}?start={referral_code}"
     
     total_refs = get_total_referrals(message.chat.id)
@@ -339,7 +377,7 @@ def handle_refer(message):
     text = (
         "🤝 **Refer & Earn Program** 💰\n\n"
         f"Invite friends and earn **${REFERRER_REWARD:.2f} USD** for every successful signup! The referred user also gets a **${REFERRED_BONUS:.2f} USD** bonus!\n\n"
-        "🔗 **Your Unique Referral Link:**\n"
+        "🔗 **Your Unique Referral Link (PERMANENT):**\n"
         f"`{referral_link}`\n\n"
         f"🏆 **Your Referrals:** **{total_refs}** users referred so far!\n"
         f"💸 **Total Referral Earnings:** **${total_earnings:.2f} USD**\n\n"
@@ -348,9 +386,10 @@ def handle_refer(message):
     )
     
     markup = types.InlineKeyboardMarkup()
+    # Updated Admin Usernames in the message
     markup.add(
-        types.InlineKeyboardButton(text="💬 Contact Admin for Withdrawal (@Fasttaget)", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
-        types.InlineKeyboardButton(text="💬 Contact Admin for Withdrawal (@Winslotz)", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
+        types.InlineKeyboardButton(text=f"💬 Contact Admin for Withdrawal ({ADMIN_USERNAME_PRIMARY})", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
+        types.InlineKeyboardButton(text=f"💬 Contact Admin for Withdrawal ({ADMIN_USERNAME_SECONDARY})", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
     )
     markup.add(types.InlineKeyboardButton(text="🔙 Main Menu", callback_data="back_send")) 
     
@@ -368,9 +407,10 @@ def handle_add_funds(message):
     )
     
     markup = types.InlineKeyboardMarkup()
+    # Updated Admin Usernames in the message
     markup.add(
-        types.InlineKeyboardButton(text="💬 Contact Admin for Deposit (@Fasttaget)", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
-        types.InlineKeyboardButton(text="💬 Contact Admin for Deposit (@Winslotz)", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
+        types.InlineKeyboardButton(text=f"💬 Contact Admin for Deposit ({ADMIN_USERNAME_PRIMARY})", url=f"https://t.me/{ADMIN_USERNAME_PRIMARY.replace('@', '')}"),
+        types.InlineKeyboardButton(text=f"💬 Contact Admin for Deposit ({ADMIN_USERNAME_SECONDARY})", url=f"https://t.me/{ADMIN_USERNAME_SECONDARY.replace('@', '')}")
     )
     markup.add(types.InlineKeyboardButton(text="🔙 Main Menu", callback_data="back_send")) 
     
@@ -489,7 +529,7 @@ def handle_game_click(call):
                      parse_mode='Markdown',
                      reply_markup=markup)
 
-# --- NEW CALLBACK HANDLER FOR BACK BUTTONS ---
+# --- CALLBACK HANDLER FOR BACK BUTTONS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('back_'))
 def handle_back_buttons(call):
     chat_id = call.message.chat.id
@@ -531,7 +571,7 @@ def handle_back_buttons(call):
             bot.send_message(chat_id, text, parse_mode='Markdown', reply_markup=games_markup())
 
 # ----------------------------------------------------
-# --- 7. Admin Handlers (Unchanged Logic) ---
+# --- 8. Admin Handlers (Unchanged Logic) ---
 # ----------------------------------------------------
 
 @bot.message_handler(commands=['admin'])
@@ -726,17 +766,19 @@ def handle_admin_user_details(message):
     bot.send_message(message.chat.id, user_text, parse_mode='Markdown', reply_markup=markup)
 
 # ----------------------------------------------------
-# --- 8. Main Execution ---
+# --- 9. Main Execution (MODIFIED FOR RENDER) ---
 # ----------------------------------------------------
 
 if __name__ == '__main__':
     print("Initializing Database...")
     init_db()
-    print("Database Initialized. Starting Bot Polling...")
-    try:
-        # Note: This polling method works if you've manually installed pyTelegramBotAPI
-        # or are using a compatible hosting service (like PythonAnywhere Bash Console)
-        bot.delete_webhook() 
-        bot.polling(none_stop=True)
-    except Exception as e:
-        print(f"An unexpected error occurred during polling: {e}")
+    
+    # Set the webhook URL when the bot starts
+    set_webhook_url()
+    
+    print("Bot setup complete. Ready for Render Webhook deployment (Gunicorn will run the app).")
+    
+    # This block is required to run the Flask app locally if not using gunicorn, 
+    # but Gunicorn/Render handles the execution using the 'app' variable.
+    # It should not be necessary for Render, but kept for robustness.
+    # app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000))) 
